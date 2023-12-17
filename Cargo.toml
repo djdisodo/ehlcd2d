@@ -1,0 +1,16 @@
+[package]
+name = "ehlcd2d"
+version = "0.1.1"
+authors = ["djdisodo@gmail.com"]
+keywords = ["embedded-hal", "lcd", "lcd1602", "async", "HD44780"]
+description = "embedded-hal driver for HD44780 with async support"
+categories = ["embedded"]
+repository = "https://github.com/djdisodo/ehlcd2d"
+documentation = "https://docs.rs/ehlcd2d"
+license = "MIT"
+edition = "2021"
+
+[dependencies]
+embedded-hal = "0.2.3"
+embedded-hal-async = "1.0.0-rc.1"
+embedded-io-async = "0.6.0"
