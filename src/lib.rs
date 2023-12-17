@@ -10,7 +10,9 @@
 /// currently only works in write-only mode
 /// use dummy pin for RW pin
 /// doesn't track the current position
-/// you should use seek to change line, position
+/// this is because this driver is designed to have very small memory footprint
+/// the type Lcd can be zero sized depending on pin type and delay type
+/// you should use seek to change line and position
 ///
 /// currently blocking io and full width bus isn't supported
 /// (it shouldn't be "hard") i'm just lazy
