@@ -6,10 +6,9 @@ use crate::{Bus, LcdPinConfiguration};
 pub struct Lcd<
     EN: OutputPin,
     RS: OutputPin,
-    RW: OutputPin,
     B: Bus,
     DELAY: DelayUs<u16>
 > {
-    pins: LcdPinConfiguration<EN, RS, RW, B>,
+    pins: LcdPinConfiguration<EN, RS, B>,
     delay: DELAY
 }

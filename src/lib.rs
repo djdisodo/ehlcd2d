@@ -18,9 +18,9 @@
 /// (it shouldn't be "hard") i'm just lazy
 ///
 /// rw pin will allow use of busy flag but it isn't implemented
-/// instead, this driver works by waiting max time required specified in spec
-/// however, on some places delay durations are roughly guessed since i couldn't find them from spec
-/// i doubt anyone will need it so i'm thinking of dropping it soon
+/// instead, this driver works by waiting for a while
+/// waiting time is longer than the one in the spec, this is to support compatible chips(eg. ks0066)
+/// without rw pin support
 ///
 /// example
 /// ```rust
@@ -31,11 +31,10 @@
 ///         embassy_time::Timer::after_micros(ns.div_ceil(1000) as u64).await;
 ///     }
 /// }
-///     let mut lcd = Lcd::<_, _, _, _, _, Infallible>::new(
+///     let mut lcd = Lcd::<_, _, _, _, Infallible>::new(
 ///         LcdPinConfiguration {
 ///             en: pins.d7.into_output(),
 ///             rs: pins.d6.into_output(),
-///             rw: DummyPin::new_low(),
 ///             bus: HalfWidthBus {
 ///                 d4: pins.d8.into_output(),
 ///                 d5: pins.d9.into_output(),
@@ -253,21 +252,18 @@ pub(crate) fn pin_state(v: bool) -> PinState {
 pub struct LcdPinConfiguration<
     EN: OutputPin,
     RS: OutputPin,
-    RW: OutputPin,
     B: Bus
 > {
     pub en: EN,
     pub rs: RS,
-    pub rw: RW,
     pub bus: B
 }
 
 impl<
     EN: OutputPin,
     RS: OutputPin,
-    RW: OutputPin,
     B: Bus
-> LcdPinConfiguration<EN, RS, RW, B> {
+> LcdPinConfiguration<EN, RS, B> {
     fn pulse(&mut self) -> Result<(), EN::Error> {
         self.en.set_high()?;
         self.en.set_low()
@@ -277,15 +273,14 @@ impl<
 impl<
     EN: OutputPin,
     RS: OutputPin,
-    RW: OutputPin,
     D4: OutputPin,
     D5: OutputPin,
     D6: OutputPin,
     D7: OutputPin
-> LcdPinConfiguration<EN, RS, RW, HalfWidthBus<D4, D5, D6, D7>> {
+> LcdPinConfiguration<EN, RS, HalfWidthBus<D4, D5, D6, D7>> {
     fn update<
         E:
-            From<EN::Error> + From<RS::Error> + From<RW::Error> +
+            From<EN::Error> + From<RS::Error> +
             From<D4::Error> + From<D5::Error> + From<D6::Error> + From<D7::Error>
     >(&mut self, mut byte: u8) -> Result<(), E> {
         self.bus.d4.set_state(pin_state(byte & 1 == 1))?;
@@ -303,7 +298,6 @@ impl<
 impl<
     EN: OutputPin,
     RS: OutputPin,
-    RW: OutputPin,
     D0: OutputPin,
     D1: OutputPin,
     D2: OutputPin,
@@ -312,10 +306,10 @@ impl<
     D5: OutputPin,
     D6: OutputPin,
     D7: OutputPin
-> LcdPinConfiguration<EN, RS, RW, FullWidthBus<D0, D1, D2, D3, D4, D5, D6, D7>> {
+> LcdPinConfiguration<EN, RS, FullWidthBus<D0, D1, D2, D3, D4, D5, D6, D7>> {
     fn update<
         E:
-            From<EN::Error> + From<RS::Error> + From<RW::Error> +
+            From<EN::Error> + From<RS::Error> +
             From<D0::Error> + From<D1::Error> + From<D2::Error> + From<D3::Error> +
             From<D4::Error> + From<D5::Error> + From<D6::Error> + From<D7::Error>
     >(&mut self, mut byte: u8) -> Result<(), E> {
@@ -349,20 +343,17 @@ pub trait BusSend<E> {
 impl<
     EN: OutputPin,
     RS: OutputPin,
-    RW: OutputPin,
     D4: OutputPin,
     D5: OutputPin,
     D6: OutputPin,
     D7: OutputPin,
     E:
-        From<EN::Error> + From<RS::Error> + From<RW::Error> +
+        From<EN::Error> + From<RS::Error> +
         From<D4::Error> + From<D5::Error> + From<D6::Error> + From<D7::Error>
-> BusSend<E> for LcdPinConfiguration<EN, RS, RW, HalfWidthBus<D4, D5, D6, D7>> {
+> BusSend<E> for LcdPinConfiguration<EN, RS, HalfWidthBus<D4, D5, D6, D7>> {
     fn send(&mut self, byte: u8, mode: bool) -> Result<(), E> {
         self.rs.set_state(pin_state(mode))?;
-        self.rw.set_low()?;
         self.update::<E>(byte >> 4)?;
-        //TODO insert delay here
         self.update::<E>(byte)?;
         Ok(())
     }
@@ -371,7 +362,6 @@ impl<
 impl<
     EN: OutputPin,
     RS: OutputPin,
-    RW: OutputPin,
     D0: OutputPin,
     D1: OutputPin,
     D2: OutputPin,
@@ -381,13 +371,12 @@ impl<
     D6: OutputPin,
     D7: OutputPin,
     E:
-        From<EN::Error> + From<RS::Error> + From<RW::Error> +
+        From<EN::Error> + From<RS::Error> +
         From<D0::Error> + From<D1::Error> + From<D2::Error> + From<D3::Error> +
         From<D4::Error> + From<D5::Error> + From<D6::Error> + From<D7::Error>
-> BusSend<E> for LcdPinConfiguration<EN, RS, RW, FullWidthBus<D0, D1, D2, D3, D4, D5, D6, D7>> {
+> BusSend<E> for LcdPinConfiguration<EN, RS, FullWidthBus<D0, D1, D2, D3, D4, D5, D6, D7>> {
     fn send(&mut self, byte: u8, mode: bool) -> Result<(), E> {
         self.rs.set_state(pin_state(mode))?;
-        self.rw.set_low()?;
         self.update::<E>(byte)?;
         Ok(())
     }

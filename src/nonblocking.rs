@@ -1,19 +1,18 @@
 use core::cmp::max;
 use core::marker::PhantomData;
 use embedded_hal::digital::v2::OutputPin;
-use embedded_hal_async::delay::DelayNs;
+use embedded_hal_async::delay::DelayUs;
 use embedded_io_async::{ErrorKind, ErrorType, Seek, SeekFrom, Write};
 use crate::{Bus, BusSend, Command, DisplayControl, Lines, EntryMode, HalfWidthBus, LcdIOError, LcdPinConfiguration};
 
 pub struct Lcd<
     EN: OutputPin,
     RS: OutputPin,
-    RW: OutputPin,
     B: Bus,
-    DELAY: DelayNs,
+    DELAY: DelayUs,
     E
 > {
-    pins: LcdPinConfiguration<EN, RS, RW, B>,
+    pins: LcdPinConfiguration<EN, RS, B>,
     delay: DELAY,
     _error: PhantomData<E>
 }
@@ -21,13 +20,12 @@ pub struct Lcd<
 impl<
     EN: OutputPin,
     RS: OutputPin,
-    RW: OutputPin,
     B: Bus,
-    DELAY: DelayNs,
-    E: From<EN::Error> + From<RS::Error> + From<RW::Error>
-> Lcd<EN, RS, RW, B, DELAY, E> where
+    DELAY: DelayUs,
+    E: From<EN::Error> + From<RS::Error>
+> Lcd<EN, RS, B, DELAY, E> where
     Self: Reset<E>,
-    LcdPinConfiguration<EN, RS, RW, B>: BusSend<E>
+    LcdPinConfiguration<EN, RS, B>: BusSend<E>
 {
     /// lcd is reset and initialized with display: off, it's off just because it's like that in reset procedure,
     /// even if it seems to work with display: on
@@ -38,11 +36,10 @@ impl<
     ///
     /// example
     /// ```rust
-    ///     let mut lcd = Lcd::<_, _, _, _, _, Infallible>::new(
+    ///     let mut lcd = Lcd::<_, _, _, _, Infallible>::new(
     ///         LcdPinConfiguration {
     ///             en: pins.d7.into_output(),
-    ///             rs: pins.d6.into_output(),
-    ///             rw: DummyPin::new_low(),
+    ///             rs: pins.d6.into_output()
     ///             bus: HalfWidthBus {
     ///                 d4: pins.d8.into_output(),
     ///                 d5: pins.d9.into_output(),
@@ -61,7 +58,7 @@ impl<
     ///     lcd.seek(SeekFrom::Start(40)).await.unwrap(); //second line address 40..56
     ///     lcd.write_all("second line".as_bytes()).await.unwrap();
     /// ```
-    pub async fn new(pins: LcdPinConfiguration<EN, RS, RW, B>, delay: DELAY, lines: Lines, entry: EntryMode) -> Result<Self, E> {
+    pub async fn new(pins: LcdPinConfiguration<EN, RS, B>, delay: DELAY, lines: Lines, entry: EntryMode) -> Result<Self, E> {
         let mut v = Self {
             pins,
             delay,
@@ -73,14 +70,13 @@ impl<
 
     async fn command(&mut self, command: u8) -> Result<(), E> {
         self.pins.command_nodelay(command)?;
-        self.delay.delay_us(50).await; //most of commands require 37us but not all
+        self.delay.delay_us(45).await; //most of commands require 37us but not all
         Ok(())
     }
 
     async fn init(&mut self, lines: Lines, entry: EntryMode) -> Result<(), E> {
         self.pins.rs.set_low()?;
         self.pins.en.set_low()?;
-        self.pins.rw.set_low()?;
         self.delay.delay_us(15000).await;
 
         self.reset().await?;
@@ -106,19 +102,19 @@ impl<
 
     pub async fn clear(&mut self) -> Result<(), E> {
         self.pins.command_nodelay(Command::ClearDisplay as u8)?;
-        self.delay.delay_us(1520).await; //not in datasheet
+        self.delay.delay_us(15000).await; //not in datasheet
         Ok(())
     }
 
     pub async fn home(&mut self) -> Result<(), E> {
-        self.pins.command_nodelay(Command::ReturnHome as u8)?;
-        self.delay.delay_us(1520).await;
+        self.pins.command_nodelay(Command::ReturnHome as u8);
+        self.delay.delay_us(15000).await;
         Ok(())
     }
 
     pub async fn write_char(&mut self, c: u8) -> Result<(), E> {
         self.pins.send(c, true)?;
-        self.delay.delay_us(41).await;
+        self.delay.delay_us(50).await;
         Ok(())
     }
 
@@ -131,13 +127,12 @@ impl<
 impl<
     EN: OutputPin,
     RS: OutputPin,
-    RW: OutputPin,
     B: Bus,
-    DELAY: DelayNs,
-    E: From<EN::Error> + From<RS::Error> + From<RW::Error>
-> ErrorType for Lcd<EN, RS, RW, B, DELAY, E> where
+    DELAY: DelayUs,
+    E: From<EN::Error> + From<RS::Error>
+> ErrorType for Lcd<EN, RS, B, DELAY, E> where
     Self: Reset<E>,
-    LcdPinConfiguration<EN, RS, RW, B>: BusSend<E>
+    LcdPinConfiguration<EN, RS, B>: BusSend<E>
 {
     type Error = LcdIOError<E>;
 }
@@ -145,13 +140,12 @@ impl<
 impl<
     EN: OutputPin,
     RS: OutputPin,
-    RW: OutputPin,
     B: Bus,
-    DELAY: DelayNs,
-    E: From<EN::Error> + From<RS::Error> + From<RW::Error>
-> Write for Lcd<EN, RS, RW, B, DELAY, E> where
+    DELAY: DelayUs,
+    E: From<EN::Error> + From<RS::Error>
+> Write for Lcd<EN, RS, B, DELAY, E> where
     Self: Reset<E>,
-    LcdPinConfiguration<EN, RS, RW, B>: BusSend<E>
+    LcdPinConfiguration<EN, RS, B>: BusSend<E>
 {
     async fn write(&mut self, buf: &[u8]) -> Result<usize, Self::Error> {
         let result: Result<usize, E> = try {
@@ -167,13 +161,12 @@ impl<
 impl<
     EN: OutputPin,
     RS: OutputPin,
-    RW: OutputPin,
     B: Bus,
-    DELAY: DelayNs,
-    E: From<EN::Error> + From<RS::Error> + From<RW::Error>
-> Seek for Lcd<EN, RS, RW, B, DELAY, E> where
+    DELAY: DelayUs,
+    E: From<EN::Error> + From<RS::Error>
+> Seek for Lcd<EN, RS, B, DELAY, E> where
     Self: Reset<E>,
-    LcdPinConfiguration<EN, RS, RW, B>: BusSend<E>
+    LcdPinConfiguration<EN, RS, B>: BusSend<E>
 {
 
     async fn seek(&mut self, pos: SeekFrom) -> Result<u64, Self::Error> {
@@ -246,24 +239,23 @@ trait Reset<E> {
 impl<
     EN: OutputPin,
     RS: OutputPin,
-    RW: OutputPin,
     D4: OutputPin,
     D5: OutputPin,
     D6: OutputPin,
     D7: OutputPin,
     E:
-        From<EN::Error> + From<RS::Error> + From<RW::Error> +
+        From<EN::Error> + From<RS::Error> +
         From<D4::Error> + From<D5::Error> + From<D6::Error> + From<D7::Error>,
-    DELAY: DelayNs,
+    DELAY: DelayUs,
     _E
-> Reset<E> for Lcd<EN, RS, RW, HalfWidthBus<D4, D5, D6, D7>, DELAY, _E> {
+> Reset<E> for Lcd<EN, RS, HalfWidthBus<D4, D5, D6, D7>, DELAY, _E> {
     async fn reset(&mut self) -> Result<(), E> {
         self.pins.update::<E>(0b0011)?;
-        self.delay.delay_us(4100).await;
+        self.delay.delay_us(4500).await;
         self.pins.pulse()?;
-        self.delay.delay_us(4100).await; //should be 100 according to spec? but it doesn't seem to work
+        self.delay.delay_us(4500).await; //should be 100 according to spec? but it doesn't seem to work
         self.pins.pulse()?;
-        self.delay.delay_us(37).await;
+        self.delay.delay_us(50).await;
         self.pins.update::<E>(0b0010)?;
         Ok(())
     }
