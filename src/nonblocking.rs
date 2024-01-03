@@ -114,7 +114,7 @@ impl<
 
     pub async fn write_char(&mut self, c: u8) -> Result<(), E> {
         self.pins.send(c, true)?;
-        self.delay.delay_us(50).await;
+        self.delay.delay_us(45).await;
         Ok(())
     }
 
@@ -149,10 +149,11 @@ impl<
 {
     async fn write(&mut self, buf: &[u8]) -> Result<usize, Self::Error> {
         let result: Result<usize, E> = try {
+            let len = buf.len();
             for x in buf {
                 self.write_char(*x).await?;
             }
-            buf.len()
+            len
         };
         result.map_err(|e| LcdIOError(Some(e), ErrorKind::Other))
     }
