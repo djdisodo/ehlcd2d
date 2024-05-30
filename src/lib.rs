@@ -55,7 +55,7 @@
 /// ```
 
 use core::fmt::{Debug, Formatter};
-use embedded_hal::digital::v2::{OutputPin, PinState};
+use embedded_hal::digital::{OutputPin, PinState};
 use embedded_io_async::{Error, ErrorKind};
 
 pub mod blocking;

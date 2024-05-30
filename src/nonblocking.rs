@@ -1,7 +1,7 @@
 use core::cmp::max;
 use core::marker::PhantomData;
-use embedded_hal::digital::v2::OutputPin;
-use embedded_hal_async::delay::DelayUs;
+use embedded_hal::digital::OutputPin;
+use embedded_hal_async::delay::DelayNs;
 use embedded_io_async::{ErrorKind, ErrorType, Seek, SeekFrom, Write};
 use crate::{Bus, BusSend, Command, DisplayControl, Lines, EntryMode, HalfWidthBus, LcdIOError, LcdPinConfiguration};
 
@@ -9,7 +9,7 @@ pub struct Lcd<
     EN: OutputPin,
     RS: OutputPin,
     B: Bus,
-    DELAY: DelayUs,
+    DELAY: DelayNs,
     E
 > {
     pins: LcdPinConfiguration<EN, RS, B>,
@@ -21,7 +21,7 @@ impl<
     EN: OutputPin,
     RS: OutputPin,
     B: Bus,
-    DELAY: DelayUs,
+    DELAY: DelayNs,
     E: From<EN::Error> + From<RS::Error>
 > Lcd<EN, RS, B, DELAY, E> where
     Self: Reset<E>,
@@ -128,7 +128,7 @@ impl<
     EN: OutputPin,
     RS: OutputPin,
     B: Bus,
-    DELAY: DelayUs,
+    DELAY: DelayNs,
     E: From<EN::Error> + From<RS::Error>
 > ErrorType for Lcd<EN, RS, B, DELAY, E> where
     Self: Reset<E>,
@@ -141,7 +141,7 @@ impl<
     EN: OutputPin,
     RS: OutputPin,
     B: Bus,
-    DELAY: DelayUs,
+    DELAY: DelayNs,
     E: From<EN::Error> + From<RS::Error>
 > Write for Lcd<EN, RS, B, DELAY, E> where
     Self: Reset<E>,
@@ -163,7 +163,7 @@ impl<
     EN: OutputPin,
     RS: OutputPin,
     B: Bus,
-    DELAY: DelayUs,
+    DELAY: DelayNs,
     E: From<EN::Error> + From<RS::Error>
 > Seek for Lcd<EN, RS, B, DELAY, E> where
     Self: Reset<E>,
@@ -247,7 +247,7 @@ impl<
     E:
         From<EN::Error> + From<RS::Error> +
         From<D4::Error> + From<D5::Error> + From<D6::Error> + From<D7::Error>,
-    DELAY: DelayUs,
+    DELAY: DelayNs,
     _E
 > Reset<E> for Lcd<EN, RS, HalfWidthBus<D4, D5, D6, D7>, DELAY, _E> {
     async fn reset(&mut self) -> Result<(), E> {
